@@ -1,167 +1,242 @@
-import React, { useState, useEffect } from 'react';
-import { Tv, Shield, Trophy, Gift, Sparkles, Download, Smartphone, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Comment } from '../types';
+import { MessageSquare, Send, Heart, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-export default function LivePlayer() {
-  const [activeServer, setActiveServer] = useState<1 | 2 | 3>(1);
-  const [showSponsor, setShowSponsor] = useState(true); // true initially to let user preview it
-  const [showToast, setShowToast] = useState(false);
+interface CommentsSectionProps {
+  comments: Comment[];
+  onAddComment: (text: string) => void;
+  onLikeComment: (commentId: string) => void;
+}
 
+// Simulated active sports chat messages to make the streaming experience feel real and engaging!
+const MOCK_ARABIC_LIVE_BUBBLERS = [
+  'جوووووووووووووووووول! مش طبيعي المباراة!!! 😍🔥⚽',
+  'أداء خورافي الصراحة من الفريقين اليوم!',
+  'الدفاع مستمر بطريقة عجيبة، اللعب رائع! 💥',
+  'اللاعبين يقدمون أقصى ما لديهم في المونديال الأقوى.. 🤩',
+  'يا رب تستمر المباراة على هذا الأداء والروح الرائعة!',
+  'تصدي أسطوري واستثنائي من الحارس بالدقائق الأخيرة!! 🏆',
+  'تشجيع حماسي ممتاز يهز المدرجات بالكامل! 🗣️👏',
+  'متابعة مستمرة بدون أي تقطيع.. شكراً على البث الممتاز! ❤️📺'
+];
+
+const MOCK_USERNAMES = [
+  'sports_fan99', 'youssef_dz', 'leomessi_king', 'madridista_pure',
+  'abdel_egypt', 'mousa_fast', 'dalia_sports', 'nasser_tactical', 'ksa_champion'
+];
+
+export default function CommentsSection({ comments, onAddComment, onLikeComment }: CommentsSectionProps) {
+  const [activeTab, setActiveTab] = useState<'chat' | 'comments'>('chat');
+  const [inputText, setInputText] = useState('');
+  const [simulatedLiveChat, setSimulatedLiveChat] = useState<Comment[]>([]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Initialize and populate initial messages from the main state
   useEffect(() => {
-    // Hide the initial preview after 15 seconds
-    const initialTimer = setTimeout(() => {
-      setShowSponsor(false);
-    }, 15000);
-
-    // Interval to trigger showing every 2 minutes (120000ms)
-    const interval = setInterval(() => {
-      setShowSponsor(true);
-      // Keep it visible for 30 seconds
-      setTimeout(() => {
-        setShowSponsor(false);
-      }, 30000);
-    }, 120000);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(interval);
-    };
+    const initialSeed = comments.map(c => ({
+      ...c,
+      id: `seed-${c.id}-${Math.random()}`
+    }));
+    setSimulatedLiveChat(initialSeed);
   }, []);
 
-  const getServerUrl = (server: number) => {
-    if (server === 1) return 'https://k2.sansa-yaman.net/albaplayer/b1/';
-    return `https://k2.sansa-yaman.net/albaplayer/b1/?serv=${server}`;
+  // Append new simulated live chats periodically to keep the chat vibrant and interactive
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomMsg = MOCK_ARABIC_LIVE_BUBBLERS[Math.floor(Math.random() * MOCK_ARABIC_LIVE_BUBBLERS.length)];
+      const randomUser = MOCK_USERNAMES[Math.floor(Math.random() * MOCK_USERNAMES.length)];
+      
+      const newChat: Comment = {
+        id: `sim-${Date.now()}`,
+        matchId: 1,
+        username: randomUser,
+        avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 900000)}?w=100&auto=format&fit=crop&q=80`,
+        text: randomMsg,
+        timestamp: 'الآن',
+        likes: Math.floor(Math.random() * 8),
+        isLiked: false
+      };
+
+      setSimulatedLiveChat((prev) => [...prev, newChat].slice(-40)); // keep last 40 comments
+    }, 4500); // every 4.5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Autoscroll chat to the bottom as discussions flow
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [simulatedLiveChat, comments, activeTab]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+
+    onAddComment(inputText);
+    
+    // Also append the user chat directly into the live display
+    const userChat: Comment = {
+      id: `user-chat-${Date.now()}`,
+      matchId: 1,
+      username: 'عاشق_المونديال',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+      text: inputText,
+      timestamp: 'الآن',
+      likes: 0,
+      isLiked: false
+    };
+
+    setSimulatedLiveChat((prev) => [...prev, userChat]);
+    setInputText('');
   };
 
-  const handleApkDownload = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowToast(true);
-    
-    // Simulate natural apk download trigger
-    const link = document.createElement('a');
-    link.href = '#';
-    link.setAttribute('download', 'spinbetter-205918.apk');
-    // In real app we would have the actual apk url, we trigger simulated download feel
-    setTimeout(() => {
-      setShowToast(false);
-    }, 5000);
+  const handleQuickEmoji = (emoji: string) => {
+    setInputText((prev) => prev + emoji);
   };
 
   return (
-    <div id="live-player-section" className="w-full flex flex-col bg-black border-y border-neutral-900 md:border md:border-neutral-900 md:rounded-2xl overflow-hidden shadow-2xl">
-      {/* Embedded Live Iframe Cropped to hide the internal top navigation bar */}
-      <div className="relative w-full bg-[#000000] h-[320px] xs:h-[360px] sm:h-[480px] overflow-hidden">
-        {/* Solid elegant top bar to completely cover the third-party logo and watermark link at the top */}
-        <div className="absolute top-0 left-0 right-0 h-14 bg-black border-b border-neutral-900/60 flex items-center justify-between px-4 z-10 select-none pointer-events-none font-sans">
-          <div className="flex items-center gap-1.5 text-rose-400 font-black text-xs sm:text-sm">
-            <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping shrink-0" />
-            <span>كأس العالم في جيبك 🏆</span>
-          </div>
-          <div className="text-neutral-400 text-[10px] sm:text-xs font-bold">بث مباشر فوري ومحمّي ⚽</div>
-        </div>
+    <div className="w-full bg-[#000000] border-y border-neutral-900 md:border md:rounded-2xl md:shadow-xl mt-0 md:mt-4 max-w-full overflow-hidden last:mb-20">
+      {/* Chat header/Tab selector */}
+      <div className="flex border-b border-neutral-900 select-none">
+        <button
+          id="chat-tab-btn"
+          onClick={() => setActiveTab('chat')}
+          className={`flex-1 py-3 text-xs font-bold transition-all relative ${
+            activeTab === 'chat' ? 'text-rose-500' : 'text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          الدردشة الحية والتعليقات المباشرة 💬
+          <span className="absolute top-2.5 right-4 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+          {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-rose-500" />}
+        </button>
+        <button
+          id="comments-tab-btn"
+          onClick={() => setActiveTab('comments')}
+          className={`flex-1 py-3 text-xs font-bold transition-all relative ${
+            activeTab === 'comments' ? 'text-rose-500' : 'text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          التعليقات المفضلة ({comments.length}) ⭐
+          {activeTab === 'comments' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-rose-500" />}
+        </button>
+      </div>
 
-        {/* Sponsor Banner - Slides in with custom gold neon border and glows */}
-        <AnimatePresence>
-          {showSponsor && (
-            <motion.div
-              initial={{ opacity: 0, y: 40, x: '-50%' }}
-              animate={{ opacity: 1, y: 0, x: '-50%' }}
-              exit={{ opacity: 0, y: 30, x: '-50%', scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 120, damping: 14 }}
-              className="absolute bottom-6 left-1/2 bg-neutral-950/95 border border-yellow-500/50 text-yellow-400 font-sans py-3.5 px-5 rounded-2xl shadow-[0_0_35px_rgba(234,179,8,0.35)] flex flex-col sm:flex-row items-center gap-3.5 z-25 select-none font-bold text-center w-auto max-w-[92%] sm:min-w-[360px] pointer-events-auto"
-            >
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-neutral-950 shrink-0 shadow-lg shadow-yellow-500/20">
-                  <Sparkles className="w-5 h-5 animate-pulse" />
-                </div>
-                <div className="text-right flex-1 min-w-0">
-                  <p className="text-[9px] text-yellow-400/85 tracking-wide uppercase font-black">الراعي الرسمي للبث المباشر</p>
-                  <p className="text-xs sm:text-sm font-black text-white shrink-0">
-                    <span className="text-yellow-400 font-extrabold">SpinBetter</span> 🎰🔥
-                  </p>
-                </div>
-              </div>
-
-              <div className="h-px w-full bg-neutral-800 sm:hidden" />
-
-              <div className="flex flex-col items-center sm:items-end justify-center gap-1.5 w-full sm:w-auto sm:border-r sm:border-neutral-800 sm:pr-4 sm:mr-1">
-                <button
-                  onClick={handleApkDownload}
-                  className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-neutral-950 px-3.5 py-1.5 rounded-xl text-[10px] font-black hover:brightness-110 active:scale-95 transition shadow-lg shadow-yellow-500/10"
+      {/* Chat Messages Log view */}
+      <div 
+        ref={scrollRef}
+        className="h-[340px] overflow-y-auto px-4 py-4 space-y-3.5 bg-[#000000]/40 relative scroll-smooth"
+      >
+        <AnimatePresence initial={false}>
+          {activeTab === 'chat' ? (
+            simulatedLiveChat.length > 0 ? (
+              simulatedLiveChat.map((comment) => (
+                <motion.div
+                  key={comment.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3 justify-start items-start text-right"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>تحميل تطبيق spinbetter-205918.apk 📥</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-[9px] text-zinc-300 font-medium whitespace-nowrap">
-                  <span className="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-black animate-pulse">مكافأة 100% 💸</span>
-                  <span className="font-extrabold text-yellow-500 hover:text-yellow-400 transition underline cursor-pointer">اضغط للرهان على المباراة ⚽🏆</span>
-                </div>
+                  <img
+                    src={comment.avatar}
+                    referrerPolicy="no-referrer"
+                    alt={comment.username}
+                    className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-900 object-cover shrink-0 mt-0.5"
+                  />
+                  <div className="flex-1 bg-neutral-900/60 p-2.5 rounded-2xl border border-neutral-900/50">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] text-neutral-500 font-mono">{comment.timestamp}</span>
+                      <span className="text-xs font-bold text-neutral-300 font-mono">@{comment.username}</span>
+                    </div>
+                    <p className="text-xs text-neutral-100 leading-relaxed font-sans">{comment.text}</p>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                <Flame className="w-8 h-8 text-neutral-600 mb-2 animate-bounce" />
+                <p className="text-xs text-neutral-500 font-sans">لا يوجد دردشة لهذا اللقاء حالياً. كن أول من يكتب!</p>
               </div>
-
-              <div className="w-1.5 h-1.5 bg-yellow-450 rounded-full animate-ping shrink-0 hidden sm:block" />
-            </motion.div>
+            )
+          ) : (
+            comments.length > 0 ? (
+              comments.map((comment) => (
+                <motion.div
+                  key={comment.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex gap-3 justify-start items-start text-right"
+                >
+                  <img
+                    src={comment.avatar}
+                    referrerPolicy="no-referrer"
+                    alt={comment.username}
+                    className="w-8.5 h-8.5 rounded-full bg-neutral-800 border border-neutral-900 object-cover shrink-0 mt-0.5"
+                  />
+                  <div className="flex-1 bg-neutral-900/90 p-3 rounded-2xl border border-neutral-800/60 shadow-sm relative">
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          id={`comment-like-btn-${comment.id}`}
+                          onClick={() => onLikeComment(comment.id)}
+                          className={`flex items-center gap-1 text-[10px] focus:outline-none px-1.5 py-0.5 rounded-full ${
+                            comment.isLiked ? 'bg-rose-500/10 text-rose-400' : 'bg-neutral-805 text-neutral-450'
+                          }`}
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${comment.isLiked ? 'fill-rose-500 text-rose-500' : 'text-neutral-400'}`} />
+                          <span>{comment.likes}</span>
+                        </button>
+                      </div>
+                      <span className="text-xs font-bold text-neutral-300 font-mono">@{comment.username}</span>
+                    </div>
+                    <p className="text-xs text-neutral-100 leading-relaxed font-sans">{comment.text}</p>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                <MessageSquare className="w-8 h-8 text-neutral-600 mb-2" />
+                <p className="text-xs text-neutral-500 font-sans">لا توجد تعليقات مثبتة بعد. شارك رأيك بالأسفل!</p>
+              </div>
+            )
           )}
         </AnimatePresence>
+      </div>
 
-        {/* Dynamic Download Toast popup indicating file state */}
-        <AnimatePresence>
-          {showToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, x: '-50%' }}
-              animate={{ opacity: 1, y: 0, x: '-50%' }}
-              exit={{ opacity: 0, y: -20, x: '-50%' }}
-              className="absolute top-16 left-1/2 bg-neutral-950/95 border border-emerald-500/40 text-emerald-400 font-sans py-3 px-5 rounded-xl shadow-2xl flex items-center gap-3 z-30 select-none font-black text-xs min-w-[280px] max-w-[90%] pointer-events-none"
-            >
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 animate-bounce" />
-              <div className="text-right flex-1">
-                <p className="text-white text-[11px]">جاري بدء تنزيل التطبيق...</p>
-                <p className="text-[9px] text-zinc-400 mt-0.5 font-mono">spinbetter-205918.apk (24.8 MB)</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Quick Emojis reaction bar */}
+      <div className="px-4 py-2 border-t border-neutral-900 bg-[#000000] flex gap-2 items-center overflow-x-auto scrollbar-none shrink-0 select-none font-sans">
+        <span className="text-[10px] text-neutral-500 shrink-0 font-bold">تفاعلات سريعة:</span>
+        {['🔥', '⚽', '🏆', '❤️', '🤩', '🗣️', '👏', '💥', '💪'].map((emoji) => (
+          <button
+            key={emoji}
+            onClick={() => handleQuickEmoji(emoji)}
+            className="text-sm px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-700 active:scale-95 transition"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
 
-        <iframe
-          src={getServerUrl(activeServer)}
-          allowFullScreen={true}
-          frameBorder="0"
-          scrolling="no"
-          className="absolute top-0 left-0 w-full h-full bg-black border-0 block"
+      {/* Chat sender input form */}
+      <form onSubmit={handleSubmit} className="p-3 border-t border-neutral-900 bg-[#000000] flex gap-2 items-center">
+        <input
+          id="comment-input"
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="تفاعل واكتب تعليقك هنا مباشرة..."
+          className="flex-1 bg-neutral-900 text-xs text-right text-neutral-100 placeholder-neutral-500 py-2.5 px-4 rounded-xl border border-neutral-800 focus:border-rose-500 focus:outline-none transition font-sans"
         />
-      </div>
-
-      {/* Modern, clean server selector icons/buttons right under the broadcast player */}
-      <div className="flex flex-col gap-2 p-3 bg-neutral-950 border-t border-neutral-900">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] text-neutral-400 font-bold font-sans">اختر سيرفر البث المفضل:</span>
-          <span className="text-[9px] text-neutral-550 font-sans">تغيير السيرفر يحل مشكلة تقطيع الصوت أو الصورة فورتً</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[1, 2, 3].map((serverNum) => (
-            <button
-              key={serverNum}
-              onClick={() => setActiveServer(serverNum as 1 | 2 | 3)}
-              className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border text-xs font-bold transition duration-200 active:scale-95 ${
-                activeServer === serverNum
-                  ? 'bg-rose-500/10 border-rose-500 text-rose-450 shadow-[0_0_12px_rgba(244,63,94,0.15)] animate-pulse'
-                  : 'bg-neutral-900 border-neutral-850 text-neutral-400 hover:border-neutral-800 hover:text-neutral-200'
-              }`}
-            >
-              <Tv className="w-3.5 h-3.5 shrink-0" />
-              <span>سيرفر {serverNum}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Secondary micro features */}
-      <div className="flex justify-between items-center py-2.5 px-4 bg-[#000000] border-t border-neutral-900 text-[10px] text-neutral-450">
-        <div className="flex items-center gap-1 text-rose-500/80 font-bold select-none">
-          <Shield className="w-3 h-3 shrink-0" />
-          <span>حماية وتغطية آمنة 100%</span>
-        </div>
-        <span className="font-sans font-medium text-neutral-550">منصة كأس العالم في جيبك الرسمية</span>
-      </div>
+        <button
+          id="comment-submit-btn"
+          type="submit"
+          className="bg-rose-500 text-white w-9 h-9 rounded-xl flex items-center justify-center hover:bg-rose-600 transition active:scale-95 shrink-0 shadow-lg shadow-rose-500/10 focus:outline-none"
+        >
+          <Send className="w-4 h-4 -rotate-12" />
+        </button>
+      </form>
     </div>
   );
 }
